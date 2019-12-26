@@ -10,7 +10,7 @@
 //!
 //! either_trait! {
 //!     /// An example trait.
-//!     trait Example {
+//!     pub trait Example {
 //!         /// Foo.
 //!         fn foo(&self, x: i32) -> i32;
 //!     }
@@ -45,7 +45,7 @@
 //! i.e., no trait constants, no trait functions, no associated types, etc.
 //! The trait methods must also be non-generic, and their parameters
 //! and return types must not contain `Self`. Furthermore, the methods must
-//! not use patterns as parameters (e.g., `fn(self, (a, b): (i32, i32));`).
+//! not use patterns as parameters (e.g., `fn(&mut self, (a, b): (i32, i32));`).
 
 #[macro_export]
 #[doc(hidden)]
