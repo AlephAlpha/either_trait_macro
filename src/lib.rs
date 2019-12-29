@@ -55,21 +55,25 @@ use syn::{parse_macro_input, FnArg, ItemTrait, TraitItem, TraitItemMethod};
 fn either_method(method: &TraitItemMethod) -> proc_macro2::TokenStream {
     let sig = &method.sig;
     let name = &sig.ident;
-    let args_left = sig.inputs.iter().skip(1).map(|arg| {
-        if let FnArg::Typed(arg) = arg {
-            &arg.pat
-        } else {
-            unreachable!()
-        }
-    });
-    let args_right = args_left.clone();
-    quote! {
-        #sig {
-            match self {
-                either::Either::Left(left) => left.#name(#(#args_left),*),
-                either::Either::Right(right) => right.#name(#(#args_right),*),
+    if let FnArg::Receiver(_) = sig.inputs[0] {
+        let args_left = sig.inputs.iter().skip(1).map(|arg| {
+            if let FnArg::Typed(arg) = arg {
+                &arg.pat
+            } else {
+                unreachable!()
+            }
+        });
+        let args_right = args_left.clone();
+        quote! {
+            #sig {
+                match self {
+                    either::Either::Left(left) => left.#name(#(#args_left),*),
+                    either::Either::Right(right) => right.#name(#(#args_right),*),
+                }
             }
         }
+    } else {
+        panic!()
     }
 }
 
@@ -82,7 +86,7 @@ pub fn either_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
 
     let impl_methods = items.iter().map(|item| match item {
         TraitItem::Method(method) => either_method(method),
-        _ => unimplemented!(),
+        _ => panic!(),
     });
 
     let expand = quote! {

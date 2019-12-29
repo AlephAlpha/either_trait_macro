@@ -1,7 +1,7 @@
 Implements your own traits for [`Either`](https://crates.io/crates/either).
 
 # Usage
-When defining a trait, wrap it with the macro `either_trait`.
+When defining a trait, add the attribute `#[either_trait]`.
 
 # Example
 ```rust
