@@ -8,12 +8,11 @@ When defining a trait, wrap it with the macro `either_trait`.
 use either::Either;
 use either_trait_macro::either_trait;
 
-either_trait! {
-    /// An example trait.
-    pub trait Example {
-        /// Foo.
-        fn foo(&self, x: i32) -> i32;
-    }
+#[either_trait]
+/// An example trait.
+pub trait Example {
+    /// Foo.
+    fn foo(&self, x: i32) -> i32;
 }
 
 struct A;

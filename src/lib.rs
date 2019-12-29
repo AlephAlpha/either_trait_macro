@@ -8,12 +8,11 @@
 //! use either::Either;
 //! use either_trait_macro::either_trait;
 //!
-//! either_trait! {
-//!     /// An example trait.
-//!     pub trait Example {
-//!         /// Foo.
-//!         fn foo(&self, x: i32) -> i32;
-//!     }
+//! #[either_trait]
+//! /// An example trait.
+//! pub trait Example {
+//!     /// Foo.
+//!     fn foo(&self, x: i32) -> i32;
 //! }
 //!
 //! struct A;
@@ -47,89 +46,56 @@
 //! and return types must not contain `Self`. Furthermore, the methods must
 //! not use patterns as parameters (e.g., `fn(&mut self, (a, b): (i32, i32));`).
 
-#[macro_export]
-#[doc(hidden)]
-macro_rules! _either {
-    ($value:expr, $pattern:pat => $result:expr) => {
-        match $value {
-            Either::Left($pattern) => $result,
-            Either::Right($pattern) => $result,
+extern crate proc_macro;
+
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, FnArg, ItemTrait, TraitItem, TraitItemMethod};
+
+fn either_method(method: &TraitItemMethod) -> proc_macro2::TokenStream {
+    let sig = &method.sig;
+    let name = &sig.ident;
+    let args_left = sig.inputs.iter().skip(1).map(|arg| {
+        if let FnArg::Typed(arg) = arg {
+            &arg.pat
+        } else {
+            unreachable!()
         }
-    };
+    });
+    let args_right = args_left.clone();
+    quote! {
+        #sig {
+            match self {
+                either::Either::Left(left) => left.#name(#(#args_left),*),
+                either::Either::Right(right) => right.#name(#(#args_right),*),
+            }
+        }
+    }
 }
 
-#[macro_export]
-#[doc(hidden)]
-macro_rules! _either_method {
-    (fn $name:ident(self $(, $par:ident : $par_ty: ty)*) $(-> $ret: ty)?) => {
-        fn $name(self $(, $par: $par_ty)*) $(-> $ret)? {
-            $crate::_either!(self, inner => inner.$name($($par),*))
-        }
-    };
-    (fn $name:ident(&self $(, $par:ident : $par_ty: ty)*) $(-> $ret: ty)?) => {
-        fn $name(&self $(, $par: $par_ty)*) $(-> $ret)? {
-            $crate::_either!(self, inner => inner.$name($($par),*))
-        }
-    };
-    (fn $name:ident(&mut self $(, $par:ident : $par_ty: ty)*) $(-> $ret: ty)?) => {
-        fn $name(&mut self $(, $par: $par_ty)*) $(-> $ret)? {
-            $crate::_either!(self, inner => inner.$name($($par),*))
-        }
-    };
-}
+#[proc_macro_attribute]
+pub fn either_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemTrait);
 
-/// A macro for defining a trait and implementing it for
-/// [`Either`](https://crates.io/crates/either).
-#[macro_export]
-macro_rules! either_trait {
-    {
-        $(#[$outer:meta])*
-        pub trait $trait:ident {
-            $(
-                $(#[$inner:ident $($inner_args:tt)*])*
-                fn $name:ident($($args:tt)*) $(-> $ret: ty)?
-            );*;
-        }
-    } => {
-        $(#[$outer])*
-        pub trait $trait {
-            $(
-                $(#[$inner $($inner_args)*])*
-                fn $name($($args)*) $(-> $ret)?
-            );*;
-        }
+    let name = &input.ident;
+    let items = &input.items;
 
-        impl<L, R> $trait for Either<L, R>
+    let impl_methods = items.iter().map(|item| match item {
+        TraitItem::Method(method) => either_method(method),
+        _ => unimplemented!(),
+    });
+
+    let expand = quote! {
+        #input
+
+        impl<L, R> #name for Either<L, R>
         where
-            L: $trait,
-            R: $trait,
+            L: #name,
+            R: #name,
         {
-            $($crate::_either_method!{fn $name($($args)*) $(-> $ret)?})*
+            #(#impl_methods)*
         }
     };
-    {
-        $(#[$outer:meta])*
-        trait $trait:ident {
-            $(
-                $(#[$inner:ident $($inner_args:tt)*])*
-                fn $name:ident($($args:tt)*) $(-> $ret: ty)?
-            );*;
-        }
-    } => {
-        $(#[$outer])*
-        trait $trait {
-            $(
-                $(#[$inner $($inner_args)*])*
-                fn $name($($args)*) $(-> $ret)?
-            );*;
-        }
 
-        impl<L, R> $trait for Either<L, R>
-        where
-            L: $trait,
-            R: $trait,
-        {
-            $($crate::_either_method!{fn $name($($args)*) $(-> $ret)?})*
-        }
-    };
+    TokenStream::from(expand)
 }
