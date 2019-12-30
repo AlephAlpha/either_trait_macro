@@ -9,35 +9,41 @@ use either::Either;
 use either_trait_macro::either_trait;
 
 #[either_trait]
-/// An example trait.
-pub trait Example {
-    /// Foo.
-    fn foo(&self, x: i32) -> i32;
+/// Apply a function `n` times.
+trait Apply {
+    fn times<T, F>(&self, t: T, f: F) -> T
+    where
+        F: Fn(T) -> T;
 }
 
-struct A;
+struct Once;
 
-struct B(i32);
-
-impl Example for A {
-    fn foo(&self, x: i32) -> i32 {
-        x
+impl Apply for Once {
+    fn times<T, F>(&self, t: T, f: F) -> T
+    where
+        F: Fn(T) -> T,
+    {
+        f(t)
     }
 }
 
-impl Example for B {
-    fn foo(&self, x: i32) -> i32 {
-        self.0 + x
+impl Apply for u32 {
+    fn times<T, F>(&self, t: T, f: F) -> T
+    where
+        F: Fn(T) -> T,
+    {
+        let mut t = t;
+        for _ in 0..*self {
+            t = f(t);
+        }
+        t
     }
 }
 
-let mut either: Either<A, B> = Either::Left(A);
-assert_eq!(either.foo(2), 2);
-
-let mut either: Either<A, B> = Either::Right(B(2));
-assert_eq!(either.foo(2), 4);
+let either: Either<Once, u32> = Either::Left(Once);
+assert_eq!(either.times(1, |x| x + 2), 3);
 ```
 
-# Limits
+# Limitations
 
-This macro only supports non-generic traits without any associated constant or associated type. The first parameter of a trait method must be `self`, `&self` or `&mut self`. The types of other parameters and the return type must not contain `Self`.
+This macro only supports traits without any associated constant or associated type. Generic type parameters of the trait must not be `L` or `R`. The first parameter of a trait method must be `self`, `&self` or `&mut self`. The types of other parameters and the return type must not contain `Self`.

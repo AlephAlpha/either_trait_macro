@@ -11,39 +11,46 @@
 //! use either_trait_macro::either_trait;
 //!
 //! #[either_trait]
-//! /// An example trait.
-//! pub trait Example {
-//!     /// Foo.
-//!     fn foo(&self, x: i32) -> i32;
+//! /// Apply a function `n` times.
+//! trait Apply {
+//!     fn times<T, F>(&self, t: T, f: F) -> T
+//!     where
+//!         F: Fn(T) -> T;
 //! }
 //!
-//! struct A;
+//! struct Once;
 //!
-//! struct B(i32);
-//!
-//! impl Example for A {
-//!     fn foo(&self, x: i32) -> i32 {
-//!         x
+//! impl Apply for Once {
+//!     fn times<T, F>(&self, t: T, f: F) -> T
+//!     where
+//!         F: Fn(T) -> T,
+//!     {
+//!         f(t)
 //!     }
 //! }
 //!
-//! impl Example for B {
-//!     fn foo(&self, x: i32) -> i32 {
-//!         self.0 + x
+//! impl Apply for u32 {
+//!     fn times<T, F>(&self, t: T, f: F) -> T
+//!     where
+//!         F: Fn(T) -> T,
+//!     {
+//!         let mut t = t;
+//!         for _ in 0..*self {
+//!             t = f(t);
+//!         }
+//!         t
 //!     }
 //! }
 //!
-//! let mut either: Either<A, B> = Either::Left(A);
-//! assert_eq!(either.foo(2), 2);
-//!
-//! let mut either: Either<A, B> = Either::Right(B(2));
-//! assert_eq!(either.foo(2), 4);
+//! let either: Either<Once, u32> = Either::Left(Once);
+//! assert_eq!(either.times(1, |x| x + 2), 3);
 //! ```
 //!
-//! # Limits
+//! # Limitations
 //!
-//! This macro only supports non-generic traits without any
-//! associated constant or associated type.
+//! This macro only supports traits without any associated
+//! constant or associated type.
+//! Generic type parameters of the trait must not be `L` or `R`.
 //! The first parameter of a trait method must be `self`,
 //! `&self` or `&mut self`.
 //! The types of other parameters and the return type
@@ -53,7 +60,9 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, FnArg, ItemTrait, TraitItem, TraitItemMethod};
+use syn::{
+    parse_macro_input, parse_quote, FnArg, Generics, Ident, ItemTrait, TraitItem, TraitItemMethod,
+};
 
 fn either_method(method: &TraitItemMethod) -> proc_macro2::TokenStream {
     let sig = &method.sig;
@@ -76,7 +85,32 @@ fn either_method(method: &TraitItemMethod) -> proc_macro2::TokenStream {
             }
         }
     } else {
-        panic!()
+        panic!("The first parameter of a trait method must be `self`, `&self` or `&mut self`.")
+    }
+}
+
+fn impl_item(name: &Ident, generics: &Generics) -> proc_macro2::TokenStream {
+    let (_impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let mut extended_generics = generics.clone();
+
+    assert!(
+        extended_generics.type_params().all(|param| {
+            let name = param.ident.to_string();
+            name != "L" && name != "R"
+        }),
+        "Generic type parameters must not be `L` or `R`."
+    );
+
+    extended_generics
+        .params
+        .push(parse_quote!(L: #name #ty_generics));
+    extended_generics
+        .params
+        .push(parse_quote!(R: #name #ty_generics));
+
+    quote! {
+        impl #extended_generics #name #ty_generics for Either<L, R> #where_clause
     }
 }
 
@@ -87,18 +121,17 @@ pub fn either_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
     let name = &input.ident;
     let items = &input.items;
 
+    let impl_item = impl_item(&name, &input.generics);
+
     let impl_methods = items.iter().map(|item| match item {
         TraitItem::Method(method) => either_method(method),
-        _ => panic!(),
+        _ => panic!("The trait must be without associated constants or associated types."),
     });
 
     let expand = quote! {
         #input
 
-        impl<L, R> #name for Either<L, R>
-        where
-            L: #name,
-            R: #name,
+        #impl_item
         {
             #(#impl_methods)*
         }

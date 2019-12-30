@@ -2,79 +2,54 @@ use either::Either;
 use either_trait_macro::either_trait;
 
 #[either_trait]
-/// An example trait.
-trait Example {
-    /// Foo.
-    fn foo(&self, x: i32) -> i32;
+trait Example<T> {
+    fn foo(&mut self, t: T);
 
-    /// Bar.
-    fn bar(&mut self, z: (i32, i32));
-
-    /// Generic baz.
-    fn baz<T, F>(&self, t: T, f: F) -> T
+    fn bar<F>(&self, f: F, t: &T) -> T
     where
-        F: Fn(T) -> T;
+        F: FnOnce(&T) -> T;
 }
 
 struct A;
 
-struct B(i32);
+struct B<T> {
+    t: Option<T>,
+}
 
-impl Example for A {
-    fn foo(&self, x: i32) -> i32 {
-        x
-    }
+impl<T> Example<T> for A {
+    fn foo(&mut self, _t: T) {}
 
-    fn bar(&mut self, (x, y): (i32, i32)) {
-        println!("{}, {}", x, y);
-    }
-
-    fn baz<T, F>(&self, t: T, f: F) -> T
+    fn bar<F>(&self, f: F, t: &T) -> T
     where
-        F: Fn(T) -> T,
+        F: FnOnce(&T) -> T,
     {
         f(t)
     }
 }
 
-impl Example for B {
-    fn foo(&self, x: i32) -> i32 {
-        self.0 + x
+impl<T> Example<T> for B<T> {
+    fn foo(&mut self, t: T) {
+        self.t = Some(t);
     }
 
-    fn bar(&mut self, (x, y): (i32, i32)) {
-        self.0 += x + y;
-        println!("{}, {}", x, y);
-    }
-
-    fn baz<T, F>(&self, t: T, f: F) -> T
+    fn bar<F>(&self, f: F, t: &T) -> T
     where
-        F: Fn(T) -> T,
+        F: FnOnce(&T) -> T,
     {
-        let mut t = t;
-        let mut i = self.0;
-        while i > 0 {
-            t = f(t);
-            i -= 1;
-        }
-        t
+        f(self.t.as_ref().unwrap_or(t))
     }
 }
 
 #[test]
-fn test1() {
-    let mut either: Either<A, B> = Either::Left(A);
-    assert_eq!(either.foo(2), 2);
-    assert_eq!(either.baz(1, |x| x + 2), 3);
-    either.bar((3, 4));
-    assert_eq!(either.foo(0), 0);
+fn test_left() {
+    let mut either: Either<A, B<u32>> = Either::Left(A);
+    either.foo(2);
+    assert_eq!(either.bar(|x| x + 2, &1), 3);
 }
 
 #[test]
-fn test2() {
-    let mut either: Either<A, B> = Either::Right(B(2));
-    assert_eq!(either.foo(2), 4);
-    assert_eq!(either.baz(1, |x| x + 2), 5);
-    either.bar((3, 4));
-    assert_eq!(either.foo(0), 9);
+fn test_right() {
+    let mut either: Either<A, B<u32>> = Either::Right(B { t: None });
+    either.foo(2);
+    assert_eq!(either.bar(|x| x + 2, &1), 4);
 }
