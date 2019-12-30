@@ -9,6 +9,11 @@ trait Example {
 
     /// Bar.
     fn bar(&mut self, z: (i32, i32));
+
+    /// Generic baz.
+    fn baz<T, F>(&self, t: T, f: F) -> T
+    where
+        F: Fn(T) -> T;
 }
 
 struct A;
@@ -23,6 +28,13 @@ impl Example for A {
     fn bar(&mut self, (x, y): (i32, i32)) {
         println!("{}, {}", x, y);
     }
+
+    fn baz<T, F>(&self, t: T, f: F) -> T
+    where
+        F: Fn(T) -> T,
+    {
+        f(t)
+    }
 }
 
 impl Example for B {
@@ -34,12 +46,26 @@ impl Example for B {
         self.0 += x + y;
         println!("{}, {}", x, y);
     }
+
+    fn baz<T, F>(&self, t: T, f: F) -> T
+    where
+        F: Fn(T) -> T,
+    {
+        let mut t = t;
+        let mut i = self.0;
+        while i > 0 {
+            t = f(t);
+            i -= 1;
+        }
+        t
+    }
 }
 
 #[test]
 fn test1() {
     let mut either: Either<A, B> = Either::Left(A);
     assert_eq!(either.foo(2), 2);
+    assert_eq!(either.baz(1, |x| x + 2), 3);
     either.bar((3, 4));
     assert_eq!(either.foo(0), 0);
 }
@@ -48,6 +74,7 @@ fn test1() {
 fn test2() {
     let mut either: Either<A, B> = Either::Right(B(2));
     assert_eq!(either.foo(2), 4);
+    assert_eq!(either.baz(1, |x| x + 2), 5);
     either.bar((3, 4));
     assert_eq!(either.foo(0), 9);
 }

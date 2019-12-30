@@ -1,4 +1,6 @@
 //! Implements your own traits for [`Either`](https://crates.io/crates/either).
+//! If your trait is implemented for both type `A` and `B`,
+//! then it is automatically implemented for `Either<A, B>`.
 //!
 //! # Usage
 //! When defining a trait, wrap it with the macro `either_trait`.
@@ -40,11 +42,12 @@
 //!
 //! # Limits
 //!
-//! Now the macro only supports non-generic traits with only trait methods;
-//! i.e., no trait constants, no trait functions, no associated types, etc.
-//! The trait methods must also be non-generic, and their parameters
-//! and return types must not contain `Self`. Furthermore, the methods must
-//! not use patterns as parameters (e.g., `fn(&mut self, (a, b): (i32, i32));`).
+//! This macro only supports non-generic traits without any
+//! associated constant or associated type.
+//! The first parameter of a trait method must be `self`,
+//! `&self` or `&mut self`.
+//! The types of other parameters and the return type
+//! must not contain `Self`.
 
 extern crate proc_macro;
 
