@@ -1,4 +1,4 @@
-Implements your own traits for [`Either`](https://crates.io/crates/either). If your trait is implemented for both type `A` and `B`, then it is automatically implemented for `Either<A, B>`.
+An attribute-like macro to implement traits for [`Either`](https://crates.io/crates/either). If your trait is implemented for both type `A` and `B`, then it is automatically implemented for `Either<A, B>`.
 
 # Usage
 When defining a trait, add the attribute `#[either_trait]`.
