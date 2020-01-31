@@ -1,12 +1,14 @@
-//! An attribute-like macro to implement traits for
-//! [`Either`](https://crates.io/crates/either).
+//! An attribute-like macro to implement traits for `Either`
+//! (defined in [`either`](https://crates.io/crates/either) crate).
 //! If your trait is implemented for both type `A` and `B`,
 //! then it is automatically implemented for `Either<A, B>`.
 //!
 //! # Usage
+//!
 //! When defining a trait, wrap it with the macro `either_trait`.
 //!
 //! # Example
+//!
 //! ```rust
 //! use either::Either;
 //! use either_trait_macro::either_trait;
@@ -51,11 +53,11 @@
 //!
 //! This macro only supports traits without any associated
 //! constant or associated type.
-//! Generic type parameters of the trait must not be `L` or `R`.
 //! The first parameter of a trait method must be `self`,
 //! `&self` or `&mut self`.
 //! The types of other parameters and the return type
 //! must not contain `Self`.
+//!
 
 extern crate proc_macro;
 
@@ -80,8 +82,8 @@ fn either_method(method: &TraitItemMethod) -> proc_macro2::TokenStream {
         quote! {
             #sig {
                 match self {
-                    either::Either::Left(left) => left.#name(#(#args_left),*),
-                    either::Either::Right(right) => right.#name(#(#args_right),*),
+                    ::either::Either::Left(left) => left.#name(#(#args_left),*),
+                    ::either::Either::Right(right) => right.#name(#(#args_right),*),
                 }
             }
         }
@@ -98,20 +100,20 @@ fn impl_item(name: &Ident, generics: &Generics) -> proc_macro2::TokenStream {
     assert!(
         extended_generics.type_params().all(|param| {
             let name = param.ident.to_string();
-            name != "L" && name != "R"
+            name != "__L" && name != "__R"
         }),
-        "Generic type parameters must not be `L` or `R`."
+        "Generic type parameters must not be `__L` or `__R`."
     );
 
     extended_generics
         .params
-        .push(parse_quote!(L: #name #ty_generics));
+        .push(parse_quote!(__L: #name #ty_generics));
     extended_generics
         .params
-        .push(parse_quote!(R: #name #ty_generics));
+        .push(parse_quote!(__R: #name #ty_generics));
 
     quote! {
-        impl #extended_generics #name #ty_generics for Either<L, R> #where_clause
+        impl #extended_generics #name #ty_generics for ::either::Either<__L, __R> #where_clause
     }
 }
 

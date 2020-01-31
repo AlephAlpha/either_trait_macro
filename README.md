@@ -1,9 +1,13 @@
-An attribute-like macro to implement traits for [`Either`](https://crates.io/crates/either). If your trait is implemented for both type `A` and `B`, then it is automatically implemented for `Either<A, B>`.
+# either_trait_macro
 
-# Usage
+An attribute-like macro to implement traits for `Either` (defined in [`either`](https://crates.io/crates/either) crate). If your trait is implemented for both type `A` and `B`, then it is automatically implemented for `Either<A, B>`.
+
+## Usage
+
 When defining a trait, add the attribute `#[either_trait]`.
 
-# Example
+## Example
+
 ```rust
 use either::Either;
 use either_trait_macro::either_trait;
@@ -44,6 +48,6 @@ let either: Either<Once, u32> = Either::Left(Once);
 assert_eq!(either.times(1, |x| x + 2), 3);
 ```
 
-# Limitations
+## Limitations
 
-This macro only supports traits without any associated constant or associated type. Generic type parameters of the trait must not be `L` or `R`. The first parameter of a trait method must be `self`, `&self` or `&mut self`. The types of other parameters and the return type must not contain `Self`.
+This macro only supports traits without any associated constant or associated type. The first parameter of a trait method must be `self`, `&self` or `&mut self`. The types of other parameters and the return type must not contain `Self`.

@@ -1,4 +1,3 @@
-use either::Either;
 use either_trait_macro::either_trait;
 
 #[either_trait]
@@ -42,6 +41,7 @@ impl<T> Example<T> for B<T> {
 
 #[test]
 fn test_left() {
+    use either::Either;
     let mut either: Either<A, B<u32>> = Either::Left(A);
     either.foo(2);
     assert_eq!(either.bar(|x| x + 2, &1), 3);
@@ -49,6 +49,7 @@ fn test_left() {
 
 #[test]
 fn test_right() {
+    use either::Either;
     let mut either: Either<A, B<u32>> = Either::Right(B { t: None });
     either.foo(2);
     assert_eq!(either.bar(|x| x + 2, &1), 4);
